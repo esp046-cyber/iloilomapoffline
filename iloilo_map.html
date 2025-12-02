@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Iloilo Province Interactive Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e3f2fd, #fff3e0);
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1976d2, #42a5f5);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 120px);
+            max-height: 800px;
+        }
+
+        .map-container {
+            flex: 2;
+            padding: 20px;
+            background: white;
+            margin: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: auto;
+        }
+
+        .sidebar {
+            flex: 1;
+            background: white;
+            margin: 20px 20px 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            min-width: 300px;
+        }
+
+        .search-box {
+            padding: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #1976d2;
+            box-shadow: 0 0 10px rgba(25, 118, 210, 0.2);
+        }
+
+        .info-panel {
+            padding: 1rem;
+        }
+
+        .municipality-list {
+            padding: 1rem;
+        }
+
+        .municipality-item {
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .municipality-item:hover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .municipality-item.selected {
+            background: #1976d2;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .municipality-item h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .municipality-item .type {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .selected-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .selected-info h2 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+
+        .selected-info .details {
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .map-svg {
+            width: 100%;
+            height: auto;
+            max-height: 700px;
+        }
+
+        .province-boundary {
+            fill: #e8f5e8;
+            stroke: #2e7d32;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: fill 0.3s;
+        }
+
+        .province-boundary:hover {
+            fill: #c8e6c9;
+        }
+
+        .municipality-area {
+            fill: #81c784;
+            stroke: #388e3c;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .municipality-area:hover {
+            fill: #66bb6a;
+            stroke-width: 2;
+        }
+
+        .municipality-area.selected {
+            fill: #1976d2;
+            stroke: #0d47a1;
+            stroke-width: 2;
+        }
+
+        .city-area {
+            fill: #ff7043;
+            stroke: #d84315;
+            stroke-width: 2;
+        }
+
+        .city-area:hover {
+            fill: #ff5722;
+        }
+
+        .city-area.selected {
+            fill: #d32f2f;
+            stroke: #b71c1c;
+            stroke-width: 2;
+        }
+
+        .municipality-label {
+            font-size: 3px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: 500;
+        }
+
+        .city-label {
+            font-size: 3.5px;
+            fill: #d84315;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: bold;
+        }
+
+        .water-area {
+            fill: #b3e5fc;
+            stroke: #0277bd;
+            stroke-width: 1;
+        }
+
+        .neighbor-area {
+            fill: #f5f5f5;
+            stroke: #9e9e9e;
+            stroke-width: 1;
+            opacity: 0.7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .stats h3 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .legend h3 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 15px;
+            margin-right: 0.5rem;
+            border: 1px solid #333;
+        }
+
+        .municipality-color { background: #81c784; }
+        .city-color { background: #ff7043; }
+        .province-color { background: #e8f5e8; }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .map-container, .sidebar {
+                margin: 0;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            
+            .map-container {
+                order: 1;
+                min-height: 400px;
+            }
+            
+            .sidebar {
+                order: 2;
+                min-width: auto;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            
+            .header {
+                padding: 0.8rem 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.6rem;
+            }
+            
+            .header p {
+                font-size: 0.9rem;
+            }
+            
+            .search-box input {
+                font-size: 16px; /* Prevents zoom on iOS */
+                padding: 0.7rem;
+            }
+            
+            .municipality-item {
+                padding: 0.8rem;
+                margin: 0.4rem 0;
+                min-height: 44px; /* Better touch targets */
+            }
+            
+            .municipality-item h3 {
+                font-size: 1rem;
+                margin-bottom: 0.2rem;
+            }
+            
+            .selected-info {
+                padding: 0.8rem;
+            }
+            
+            .stats, .legend {
+                padding: 0.8rem;
+            }
+            
+            .map-svg {
+                max-height: 400px;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .main-container {
+                padding: 5px;
+            }
+            
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            
+            .header p {
+                font-size: 0.8rem;
+            }
+            
+            .map-container {
+                min-height: 350px;
+            }
+            
+            .sidebar {
+                max-height: 350px;
+            }
+            
+            .municipality-item {
+                padding: 0.6rem;
+                margin: 0.3rem 0;
+            }
+            
+            .municipality-item h3 {
+                font-size: 0.9rem;
+            }
+            
+            .municipality-item .type {
+                font-size: 0.8rem;
+            }
+            
+            .search-box input {
+                padding: 0.6rem;
+            }
+            
+            /* Improve touch targets for small screens */
+            .municipality-area, .city-area {
+                cursor: pointer;
+                /* Larger clickable areas */
+                filter: drop-shadow(0 0 2px rgba(0,0,0,0.1));
+            }
+            
+            /* Better mobile map sizing */
+            .map-svg {
+                max-height: 350px;
+            }
+            
+            /* Mobile text sizes */
+            .municipality-label {
+                font-size: 2.5px;
+            }
+            
+            .city-label {
+                font-size: 3px;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .municipality-item:hover {
+                background: #fafafa; /* Disable hover effects on touch */
+                transform: none;
+            }
+            
+            .municipality-area:hover {
+                fill: #81c784; /* Reset hover fill */
+                stroke-width: 1.5;
+            }
+            
+            /* Improve touch feedback */
+            .municipality-item:active {
+                background: #e3f2fd;
+                transform: scale(0.98);
+            }
+            
+            .municipality-area:active {
+                fill: #66bb6a;
+            }
+        }
+
+        /* Landscape mobile optimizations */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .main-container {
+                flex-direction: row;
+                gap: 10px;
+            }
+            
+            .map-container {
+                order: 1;
+                flex: 1.5;
+                max-height: 75vh;
+                min-height: 300px;
+            }
+            
+            .sidebar {
+                order: 2;
+                flex: 1;
+                max-height: 75vh;
+                min-width: 250px;
+            }
+            
+            .header {
+                padding: 0.6rem 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 360px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .header p {
+                font-size: 0.75rem;
+            }
+            
+            .map-container {
+                min-height: 300px;
+            }
+            
+            .map-svg {
+                max-height: 300px;
+            }
+            
+            .municipality-label {
+                font-size: 2px;
+            }
+            
+            .city-label {
+                font-size: 2.5px;
+            }
+        }
+
+        /* High DPI displays */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .map-svg {
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: crisp-edges;
+            }
+        }
+
+        /* Prevent text selection on map elements */
+        .municipality-area, .city-area {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Improve scrolling on mobile */
+        .sidebar {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        /* Mobile-specific enhancements */
+        .mobile-device .municipality-area,
+        .mobile-device .city-area {
+            /* Larger touch targets on mobile */
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.2));
+        }
+
+        .mobile-device .touch-friendly {
+            /* Improved visual feedback for touch */
+            transition: all 0.1s ease;
+        }
+
+        .mobile-device .municipality-item {
+            /* Better touch targets */
+            min-height: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* iOS Safari specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            .mobile-device .search-box input {
+                border-radius: 6px; /* iOS Safari border radius fix */
+            }
+            
+            .mobile-device .municipality-item {
+                -webkit-tap-highlight-color: rgba(25, 118, 210, 0.2);
+            }
+        }
+
+        /* Android specific fixes */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            .mobile-device .municipality-item {
+                -webkit-tap-highlight-color: rgba(25, 118, 210, 0.2);
+            }
+        }
+
+        /* Improve map interaction on mobile */
+        .mobile-device .map-svg {
+            cursor: grab;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .mobile-device .map-svg:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Iloilo Province Interactive Map</h1>
+        <p>Western Visayas, Philippines • 42 Municipalities + 1 Component City</p>
+    </div>
+
+    <div class="main-container">
+        <div class="map-container">
+            <div class="loading" id="loading">Loading map...</div>
+            <svg class="map-svg" id="iloiloMap" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="display: none;">
+                <!-- Background water area -->
+                <rect class="water-area" x="0" y="0" width="100" height="100" fill="#b3e5fc"/>
+                
+                <!-- Neighbor provinces - positioned around Iloilo -->
+                <ellipse class="neighbor-area" cx="25" cy="60" rx="15" ry="20"/>
+                <text x="25" y="62" text-anchor="middle" font-size="3" fill="#666">ANTIQUE</text>
+                
+                <ellipse class="neighbor-area" cx="65" cy="25" rx="10" ry="8"/>
+                <text x="65" y="27" text-anchor="middle" font-size="3" fill="#666">AKLAN</text>
+                
+                <ellipse class="neighbor-area" cx="80" cy="45" rx="12" ry="15"/>
+                <text x="80" y="47" text-anchor="middle" font-size="3" fill="#666">CAPIZ</text>
+                
+                <!-- Iloilo Province main boundary - Properly scaled -->
+                <path class="province-boundary" id="iloilo-boundary" 
+                    d="M 20,35 Q 25,25 35,20 Q 45,15 55,16 Q 65,17 70,22 Q 75,27 74,32 Q 73,37 70,40 Q 67,43 62,45 Q 57,47 50,48 Q 43,49 38,48 Q 33,47 30,45 Q 27,43 26,40 Q 25,37 26,34 Q 27,32 28,31 Q 27,33 20,35 Z"/>
+                
+                <!-- Northeastern coastal municipalities - Properly scaled and clustered -->
+                <path class="municipality-area" data-municipality="Carles" id="carles" 
+                    d="M 52,17 Q 54,15 56,17 Q 57,20 56,22 Q 54,23 52,22 Q 51,20 52,17 Z">
+                    <title>Carles Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Balasan" id="balasan" 
+                    d="M 56,19 Q 58,17 59,20 Q 58,22 56,21 Q 55,20 56,19 Z">
+                    <title>Balasan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Estancia" id="estancia" 
+                    d="M 59,16 Q 61,15 62,18 Q 61,20 59,19 Q 58,17 59,16 Z">
+                    <title>Estancia Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Batad" id="batad" 
+                    d="M 53,22 Q 55,21 56,23 Q 55,25 53,24 Q 52,23 53,22 Z">
+                    <title>Batad Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="San Dionisio" id="sandionisio" 
+                    d="M 50,21 Q 52,20 53,22 Q 52,24 50,23 Q 49,22 50,21 Z">
+                    <title>San Dionisio Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Sara" id="sara" 
+                    d="M 47,24 Q 49,23 50,25 Q 49,27 47,26 Q 46,25 47,24 Z">
+                    <title>Sara Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Lemery" id="lemery" 
+                    d="M 54,24 Q 56,23 57,25 Q 56,27 54,26 Q 53,25 54,24 Z">
+                    <title>Lemery Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Concepcion" id="concepcion" 
+                    d="M 51,26 Q 53,25 54,27 Q 53,29 51,28 Q 50,27 51,26 Z">
+                    <title>Concepcion Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Ajuy" id="ajuy" 
+                    d="M 48,28 Q 50,27 51,29 Q 50,31 48,30 Q 47,29 48,28 Z">
+                    <title>Ajuy Municipality</title>
+                </path>
+                
+                <!-- Eastern coastal municipalities - Properly scaled -->
+                <path class="municipality-area" data-municipality="Barotac Viejo" id="barotacviejo" 
+                    d="M 72,38 Q 75,37 76,40 Q 75,43 72,42 Q 69,40 72,38 Z">
+                    <title>Barotac Viejo Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Banate" id="banate" 
+                    d="M 70,42 Q 73,41 74,44 Q 73,47 70,46 Q 67,44 70,42 Z">
+                    <title>Banate Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Anilao" id="anilao" 
+                    d="M 68,46 Q 71,45 72,48 Q 71,51 68,50 Q 65,48 68,46 Z">
+                    <title>Anilao Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Barotac Nuevo" id="barotacnuevo" 
+                    d="M 66,50 Q 69,49 70,52 Q 69,55 66,54 Q 63,52 66,50 Z">
+                    <title>Barotac Nuevo Municipality</title>
+                </path>
+                
+                <!-- Passi City (Component City) -->
+                <path class="city-area" data-municipality="Passi City" id="passicity" 
+                    d="M 64,54 Q 67,53 68,56 Q 67,59 64,58 Q 61,56 64,54 Z">
+                    <title>Passi City (Component City)</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Dumangas" id="dumangas" 
+                    d="M 62,58 Q 65,57 66,60 Q 65,63 62,62 Q 59,60 62,58 Z">
+                    <title>Dumangas Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Zarraga" id="zarraga" 
+                    d="M 60,62 Q 63,61 64,64 Q 63,67 60,66 Q 57,64 60,62 Z">
+                    <title>Zarraga Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Leganes" id="leganes" 
+                    d="M 58,66 Q 61,65 62,68 Q 61,71 58,70 Q 55,68 58,66 Z">
+                    <title>Leganes Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Pavia" id="pavia" 
+                    d="M 56,70 Q 59,69 60,72 Q 59,75 56,74 Q 53,72 56,70 Z">
+                    <title>Pavia Municipality</title>
+                </path>
+                
+                <!-- Iloilo City area (capital) - Properly positioned -->
+                <path class="city-area" data-municipality="Iloilo City" id="iloilocity" 
+                    d="M 65,66 Q 67,65 68,67 Q 67,69 65,68 Q 63,67 65,66 Z">
+                    <title>Iloilo City (Capital)</title>
+                </path>
+                
+                <!-- Southeastern coastal municipalities - Properly scaled -->
+                <path class="municipality-area" data-municipality="Oton" id="oton" 
+                    d="M 63,70 Q 66,69 67,71 Q 66,73 63,72 Q 60,71 63,70 Z">
+                    <title>Oton Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Tigbauan" id="tigbauan" 
+                    d="M 61,73 Q 64,72 65,74 Q 64,76 61,75 Q 58,74 61,73 Z">
+                    <title>Tigbauan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Guimbal" id="guimbal" 
+                    d="M 59,76 Q 62,75 63,77 Q 62,79 59,78 Q 56,77 59,76 Z">
+                    <title>Guimbal Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Miagao" id="miagao" 
+                    d="M 57,79 Q 60,78 61,80 Q 60,82 57,81 Q 54,80 57,79 Z">
+                    <title>Miagao Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="San Joaquin" id="sanjuaquin" 
+                    d="M 55,82 Q 58,81 59,83 Q 58,85 55,84 Q 52,83 55,82 Z">
+                    <title>San Joaquin Municipality</title>
+                </path>
+                
+                <!-- Western municipalities - Properly scaled -->
+                <path class="municipality-area" data-municipality="Igbaras" id="igbaras" 
+                    d="M 28,62 Q 31,61 32,64 Q 31,67 28,66 Q 25,64 28,62 Z">
+                    <title>Igbaras Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Tubungan" id="tubungan" 
+                    d="M 26,66 Q 29,65 30,68 Q 29,71 26,70 Q 23,68 26,66 Z">
+                    <title>Tubungan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Leon" id="leon" 
+                    d="M 30,58 Q 33,57 34,60 Q 33,63 30,62 Q 27,60 30,58 Z">
+                    <title>Leon Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Alimodian" id="alimodian" 
+                    d="M 32,54 Q 35,53 36,56 Q 35,59 32,58 Q 29,56 32,54 Z">
+                    <title>Alimodian Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Maasin" id="maasin" 
+                    d="M 30,50 Q 33,49 34,52 Q 33,55 30,54 Q 27,52 30,50 Z">
+                    <title>Maasin Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Janiuay" id="janiuay" 
+                    d="M 34,46 Q 37,45 38,48 Q 37,51 34,50 Q 31,48 34,46 Z">
+                    <title>Janiuay Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Lambunao" id="lambunao" 
+                    d="M 36,42 Q 39,41 40,44 Q 39,47 36,46 Q 33,44 36,42 Z">
+                    <title>Lambunao Municipality</title>
+                </path>
+                
+                <!-- Central municipalities - Properly scaled -->
+                <path class="municipality-area" data-municipality="Calinog" id="calinog" 
+                    d="M 46,42 Q 49,41 50,44 Q 49,47 46,46 Q 43,44 46,42 Z">
+                    <title>Calinog Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Bingawan" id="bingawan" 
+                    d="M 50,38 Q 53,37 54,40 Q 53,43 50,42 Q 47,40 50,38 Z">
+                    <title>Bingawan Municipality</title>
+                </path>
+                
+                <!-- East-central municipalities -->
+                <path class="municipality-area" data-municipality="Dueñas" id="duenas" 
+                    d="M 66,38 Q 69,37 70,40 Q 69,43 66,42 Q 63,40 66,38 Z">
+                    <title>Dueñas Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Badiangan" id="badiangan" 
+                    d="M 62,42 Q 65,41 66,44 Q 65,47 62,46 Q 59,44 62,42 Z">
+                    <title>Badiangan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Dingle" id="dingle" 
+                    d="M 58,46 Q 61,45 62,48 Q 61,51 58,50 Q 55,48 58,46 Z">
+                    <title>Dingle Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Mina" id="mina" 
+                    d="M 54,50 Q 57,49 58,52 Q 57,55 54,54 Q 51,52 54,50 Z">
+                    <title>Mina Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Pototan" id="pototan" 
+                    d="M 50,54 Q 53,53 54,56 Q 53,59 50,58 Q 47,56 50,54 Z">
+                    <title>Pototan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Cabatuan" id="cabatuan" 
+                    d="M 46,58 Q 49,57 50,60 Q 49,63 46,62 Q 43,60 46,58 Z">
+                    <title>Cabatuan Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="New Lucena" id="newlucena" 
+                    d="M 42,62 Q 45,61 46,64 Q 45,67 42,66 Q 39,64 42,62 Z">
+                    <title>New Lucena Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="Santa Barbara" id="santabarbara" 
+                    d="M 38,66 Q 41,65 42,68 Q 41,71 38,70 Q 35,68 38,66 Z">
+                    <title>Santa Barbara Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="San Miguel" id="sanmiguel" 
+                    d="M 34,70 Q 37,69 38,72 Q 37,75 34,74 Q 31,72 34,70 Z">
+                    <title>San Miguel Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="San Rafael" id="sanrafael" 
+                    d="M 30,74 Q 33,73 34,76 Q 33,79 30,78 Q 27,76 30,74 Z">
+                    <title>San Rafael Municipality</title>
+                </path>
+                
+                <path class="municipality-area" data-municipality="San Enrique" id="sanenrique" 
+                    d="M 52,62 Q 55,61 56,64 Q 55,67 52,66 Q 49,64 52,62 Z">
+                    <title>San Enrique Municipality</title>
+                </path>
+                
+                <!-- Labels for major cities -->
+                <text class="city-label" x="66" y="67">Iloilo City</text>
+                <text class="city-label" x="65" y="56">Passi City</text>
+                
+                <!-- Municipality labels - Updated coordinates -->
+                <text class="municipality-label" x="54" y="19">CARLES</text>
+                <text class="municipality-label" x="57" y="20">BALASAN</text>
+                <text class="municipality-label" x="60" y="18">ESTANCIA</text>
+                <text class="municipality-label" x="54" y="23">BATAD</text>
+                <text class="municipality-label" x="51" y="22">SAN DIONISIO</text>
+                <text class="municipality-label" x="48" y="25">SARA</text>
+                <text class="municipality-label" x="55" y="25">LEMERY</text>
+                <text class="municipality-label" x="52" y="27">CONCEPCION</text>
+                <text class="municipality-label" x="49" y="29">AJUY</text>
+                <text class="municipality-label" x="74" y="40">BAROTAC VIEJO</text>
+                <text class="municipality-label" x="72" y="44">BANATE</text>
+                <text class="municipality-label" x="70" y="48">ANILAO</text>
+                <text class="municipality-label" x="68" y="52">BAROTAC NUEVO</text>
+                <text class="municipality-label" x="64" y="60">DUMANGAS</text>
+                <text class="municipality-label" x="62" y="64">ZARRAGA</text>
+                <text class="municipality-label" x="60" y="68">LEGANES</text>
+                <text class="municipality-label" x="58" y="72">PAVIA</text>
+                <text class="municipality-label" x="65" y="72">OTON</text>
+                <text class="municipality-label" x="63" y="75">TIGBAUAN</text>
+                <text class="municipality-label" x="61" y="78">GUIMBAL</text>
+                <text class="municipality-label" x="59" y="81">MIAGAO</text>
+                <text class="municipality-label" x="57" y="84">SAN JOAQUIN</text>
+                <text class="municipality-label" x="30" y="64">IGBARAS</text>
+                <text class="municipality-label" x="28" y="68">TUBUNGAN</text>
+                <text class="municipality-label" x="32" y="60">LEON</text>
+                <text class="municipality-label" x="34" y="56">ALIMODIAN</text>
+                <text class="municipality-label" x="32" y="52">MAASIN</text>
+                <text class="municipality-label" x="36" y="48">JANIUAY</text>
+                <text class="municipality-label" x="38" y="44">LAMBUNAO</text>
+                <text class="municipality-label" x="48" y="44">CALINOG</text>
+                <text class="municipality-label" x="52" y="40">BINGAWAN</text>
+                <text class="municipality-label" x="68" y="40">DUEÑAS</text>
+                <text class="municipality-label" x="64" y="44">BADIANGAN</text>
+                <text class="municipality-label" x="60" y="48">DINGLE</text>
+                <text class="municipality-label" x="56" y="52">MINA</text>
+                <text class="municipality-label" x="52" y="56">POTOTAN</text>
+                <text class="municipality-label" x="48" y="60">CABATUAN</text>
+                <text class="municipality-label" x="44" y="64">NEW LUCENA</text>
+                <text class="municipality-label" x="40" y="68">SANTA BARBARA</text>
+                <text class="municipality-label" x="36" y="72">SAN MIGUEL</text>
+                <text class="municipality-label" x="32" y="76">SAN RAFAEL</text>
+                <text class="municipality-label" x="54" y="64">SAN ENRIQUE</text>
+            </svg>
+        </div>
+
+        <div class="sidebar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search municipality or city...">
+            </div>
+            
+            <div class="info-panel">
+                <div class="selected-info" id="selectedInfo">
+                    <h2>Select a Municipality</h2>
+                    <p>Click on any municipality on the map or select from the list to view detailed information.</p>
+                </div>
+                
+                <div class="stats">
+                    <h3>Iloilo Province</h3>
+                    <p><strong>42 Municipalities</strong></p>
+                    <p><strong>1 Component City</strong> (Passi City)</p>
+                    <p><strong>Total: 43 LGUs</strong></p>
+                    <p>Western Visayas Region</p>
+                </div>
+                
+                <div class="legend">
+                    <h3>Legend</h3>
+                    <div class="legend-item">
+                        <div class="legend-color municipality-color"></div>
+                        <span>Municipality</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color city-color"></div>
+                        <span>Component City</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color province-color"></div>
+                        <span>Iloilo Province</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="municipality-list" id="municipalityList">
+                <!-- Municipality list will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Municipality data
+        const municipalitiesData = {
+            "Ajuy": { "type": "Municipality", "mayor": "Loida J. Espinosa", "class": "Fourth Class" },
+            "Alimodian": { "type": "Municipality", "mayor": "Ian Kenneth A. Alfeche", "class": "Third Class" },
+            "Anilao": { "type": "Municipality", "mayor": "Ma. Theresa F. Debuque", "class": "Fifth Class" },
+            "Badiangan": { "type": "Municipality", "mayor": "Suzette A. Mamon", "class": "Fifth Class" },
+            "Balasan": { "type": "Municipality", "mayor": "Filomeno V. Ganzon", "class": "Fourth Class" },
+            "Banate": { "type": "Municipality", "mayor": "Peter Paul T. Gonzales", "class": "Fourth Class" },
+            "Barotac Nuevo": { "type": "Municipality", "mayor": "Bryant Paul Q. Biron", "class": "First Class" },
+            "Barotac Viejo": { "type": "Municipality", "mayor": "Nielo C. Tupas", "class": "Third Class" },
+            "Batad": { "type": "Municipality", "mayor": "Elvira P. Alarcon", "class": "Fourth Class" },
+            "Bingawan": { "type": "Municipality", "mayor": "Matt P. Palabrica", "class": "Fifth Class" },
+            "Cabatuan": { "type": "Municipality", "mayor": "Elizalde G. Pueyo", "class": "First Class" },
+            "Calinog": { "type": "Municipality", "mayor": "Francisco L. Calvo", "class": "First Class" },
+            "Carles": { "type": "Municipality", "mayor": "Arnold T. Betita II", "class": "First Class" },
+            "Concepcion": { "type": "Municipality", "mayor": "Milliard S. Villanueva", "class": "Third Class" },
+            "Dingle": { "type": "Municipality", "mayor": "Rufino P. Palabrica III", "class": "Third Class" },
+            "Dueñas": { "type": "Municipality", "mayor": "Robert Martin U. Pama", "class": "First Class" },
+            "Dumangas": { "type": "Municipality", "mayor": "Braeden John Q. Biron", "class": "First Class" },
+            "Estancia": { "type": "Municipality", "mayor": "Ma. Angelica Bianca B. Requinto", "class": "First Class" },
+            "Guimbal": { "type": "Municipality", "mayor": "Janette G. Colada", "class": "Fourth Class" },
+            "Igbaras": { "type": "Municipality", "mayor": "Vicente E. Escorpion, Jr.", "class": "Third Class" },
+            "Iloilo City": { "type": "Highly Urbanized City", "mayor": "Jerry P. Treñas", "class": "Highly Urbanized" },
+            "Janiuay": { "type": "Municipality", "mayor": "Paulino M. Parian", "class": "First Class" },
+            "Lambunao": { "type": "Municipality", "mayor": "Reynor R. Gonzales", "class": "First Class" },
+            "Leganes": { "type": "Municipality", "mayor": "Vicente P. Jaen II", "class": "Third Class" },
+            "Lemery": { "type": "Municipality", "mayor": "Oscar C. Villegas, Jr.", "class": "Fourth Class" },
+            "Leon": { "type": "Municipality", "mayor": "Malin Cabana-Holipas", "class": "Third Class" },
+            "Maasin": { "type": "Municipality", "mayor": "Francis A. Amboy", "class": "Fourth Class" },
+            "Miagao": { "type": "Municipality", "mayor": "Oscar S. Garin, Jr.", "class": "First Class" },
+            "Mina": { "type": "Municipality", "mayor": "Rey P. Grabato", "class": "Fifth Class" },
+            "New Lucena": { "type": "Municipality", "mayor": "Carl Vincent G. Mondejar", "class": "Fourth Class" },
+            "Oton": { "type": "Municipality", "mayor": "Sofronio L. Fusin, Jr.", "class": "First Class" },
+            "Passi City": { "type": "Component City", "mayor": "Stephen A. Palmares", "class": "Component City" },
+            "Pavia": { "type": "Municipality", "mayor": "Laurence Anthony G. Gorriceta", "class": "Second Class" },
+            "Pototan": { "type": "Municipality", "mayor": "Rafael Enrique P. Lazaro", "class": "First Class" },
+            "San Dionisio": { "type": "Municipality", "mayor": "Sally Saliha A. Lopez", "class": "Fourth Class" },
+            "San Enrique": { "type": "Municipality", "mayor": "Gian Carlo Niño P. Fernandez", "class": "Third Class" },
+            "San Joaquin": { "type": "Municipality", "mayor": "Joe Abad S. Lazaro Jr.", "class": "Third Class" },
+            "San Miguel": { "type": "Municipality", "mayor": "Bonifacio S. Salapantan Jr.", "class": "Fourth Class" },
+            "San Rafael": { "type": "Municipality", "mayor": "Roberto T. Belleza, Jr.", "class": "Fourth Class" },
+            "Santa Barbara": { "type": "Municipality", "mayor": "Dennis S. Superficial", "class": "First Class" },
+            "Sara": { "type": "Municipality", "mayor": "Jon N. Aying", "class": "Third Class" },
+            "Tigbauan": { "type": "Municipality", "mayor": "Virgilio T. Teruel", "class": "First Class" },
+            "Tubungan": { "type": "Municipality", "mayor": "Roquito G. Tacsagon", "class": "Fifth Class" },
+            "Zarraga": { "type": "Municipality", "mayor": "Ma. Jofel M. Soldevilla", "class": "Fourth Class" }
+        };
+
+        let selectedMunicipality = null;
+
+        // Initialize the application
+        function initApp() {
+            populateMunicipalityList();
+            setupEventListeners();
+            hideLoading();
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('iloiloMap').style.display = 'block';
+        }
+
+        function populateMunicipalityList() {
+            const listContainer = document.getElementById('municipalityList');
+            const municipalities = Object.keys(municipalitiesData).sort();
+
+            municipalities.forEach(name => {
+                const data = municipalitiesData[name];
+                const item = document.createElement('div');
+                item.className = 'municipality-item';
+                item.setAttribute('data-municipality', name);
+                item.innerHTML = `
+                    <h3>${name}</h3>
+                    <div class="type">${data.type} - ${data.class}</div>
+                `;
+                item.addEventListener('click', () => selectMunicipality(name));
+                listContainer.appendChild(item);
+            });
+        }
+
+        function setupEventListeners() {
+            // Map click events
+            const municipalityAreas = document.querySelectorAll('.municipality-area, .city-area');
+            municipalityAreas.forEach(area => {
+                // Support both click and touch events
+                area.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const municipality = this.getAttribute('data-municipality');
+                    selectMunicipality(municipality);
+                });
+                
+                // Touch event for better mobile response
+                area.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    const municipality = this.getAttribute('data-municipality');
+                    selectMunicipality(municipality);
+                });
+            });
+
+            // Enhanced search functionality with mobile improvements
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                filterMunicipalities(searchTerm);
+            });
+
+            // Close mobile keyboard when search loses focus
+            searchInput.addEventListener('blur', function() {
+                // Small delay to allow selection to complete
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                }, 100);
+            });
+
+            // Handle orientation change
+            window.addEventListener('orientationchange', function() {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                }, 500);
+            });
+
+            // Prevent default touch behaviors that might interfere
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.map-svg')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        function selectMunicipality(name) {
+            // Clear previous selection
+            if (selectedMunicipality) {
+                const previousElement = document.querySelector(`[data-municipality="${selectedMunicipality}"]`);
+                if (previousElement) {
+                    previousElement.classList.remove('selected');
+                }
+            }
+
+            // Select new municipality
+            selectedMunicipality = name;
+            const element = document.querySelector(`[data-municipality="${name}"]`);
+            if (element) {
+                element.classList.add('selected');
+            }
+
+            // Update info panel
+            updateInfoPanel(name);
+            
+            // Highlight on map
+            highlightOnMap(name);
+        }
+
+        function updateInfoPanel(name) {
+            const data = municipalitiesData[name];
+            const infoPanel = document.getElementById('selectedInfo');
+            
+            infoPanel.innerHTML = `
+                <h2>${name}</h2>
+                <div class="details">
+                    <p><strong>Type:</strong> ${data.type}</p>
+                    <p><strong>Classification:</strong> ${data.class}</p>
+                    <p><strong>Current Mayor:</strong> ${data.mayor}</p>
+                    <p><strong>Region:</strong> Western Visayas (Region VI)</p>
+                    <p><strong>Island:</strong> Panay</p>
+                </div>
+            `;
+        }
+
+        function highlightOnMap(name) {
+            // Remove previous highlights
+            document.querySelectorAll('.municipality-area.selected, .city-area.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Add highlight to selected municipality
+            const element = document.querySelector(`[data-municipality="${name}"]`);
+            if (element && (element.classList.contains('municipality-area') || element.classList.contains('city-area'))) {
+                element.classList.add('selected');
+            }
+        }
+
+        function filterMunicipalities(searchTerm) {
+            const items = document.querySelectorAll('.municipality-item');
+            items.forEach(item => {
+                const name = item.getAttribute('data-municipality').toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Mobile detection and initialization
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   window.innerWidth <= 768;
+        }
+
+        // Enhanced mobile experience
+        function enhanceMobileExperience() {
+            if (isMobile()) {
+                // Add mobile class to body for additional styling
+                document.body.classList.add('mobile-device');
+                
+                // Improve search on mobile
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    // Auto-focus search on mobile to improve usability
+                    setTimeout(() => {
+                        searchInput.focus();
+                    }, 1000);
+                }
+                
+                // Add touch-friendly class to municipality areas
+                const municipalityAreas = document.querySelectorAll('.municipality-area, .city-area');
+                municipalityAreas.forEach(area => {
+                    area.classList.add('touch-friendly');
+                });
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            enhanceMobileExperience();
+        });
+    </script>
+</body>
+</html>
