@@ -1,0 +1,92 @@
+[
+  {
+    "query": "An administrative map of Philippines highlighting Iloilo province",
+    "image_info": {
+      "url": "https://paintmaps.com/og_image/map_chart/map_chart_1677c.png",
+      "img_format": "PNG",
+      "mode": "RGBA",
+      "file_size": 179172,
+      "width": 1040,
+      "height": 692,
+      "total_pixels": 719680,
+      "basic_score": 0.904798343034178,
+      "file_name": "philippines_iloilo_map_3.png"
+    },
+    "llm_score": null
+  },
+  {
+    "query": "An administrative map of Philippines highlighting Iloilo province",
+    "image_info": {
+      "url": "https://images.mapsofworld.com/philippines/iloilo-map.jpg",
+      "img_format": "JPEG",
+      "mode": "RGB",
+      "file_size": 337938,
+      "width": 800,
+      "height": 700,
+      "total_pixels": 560000,
+      "basic_score": 0.8904202658968043,
+      "file_name": "philippines_iloilo_map_2.jpg"
+    },
+    "llm_score": null
+  },
+  {
+    "query": "An administrative map of Philippines highlighting Iloilo province",
+    "image_info": {
+      "url": "https://cdn.diaocthongthai.com/map/PHL/map_thumbnail_1/phl__iloilo.jpg",
+      "img_format": "JPEG",
+      "mode": "RGB",
+      "file_size": 313625,
+      "width": 1710,
+      "height": 900,
+      "total_pixels": 1539000,
+      "basic_score": 0.8792285397190018,
+      "file_name": "philippines_iloilo_map_8.jpg"
+    },
+    "llm_score": null
+  },
+  {
+    "query": "A clear map showing Iloilo province boundaries with municipalities outlined",
+    "image_info": {
+      "url": "https://www.mapsofindia.com/world-map/philippines/iloilo/iloilo-location-map.jpg",
+      "img_format": "JPEG",
+      "mode": "RGB",
+      "file_size": 254538,
+      "width": 800,
+      "height": 1139,
+      "total_pixels": 911200,
+      "basic_score": 0.9218731818711516,
+      "file_name": "iloilo_map_reference_5.jpg"
+    },
+    "llm_score": null
+  },
+  {
+    "query": "A clear map showing Iloilo province boundaries with municipalities outlined",
+    "image_info": {
+      "url": "https://images.mapsofworld.com/philippines/iloilo-map.jpg",
+      "img_format": "JPEG",
+      "mode": "RGB",
+      "file_size": 337938,
+      "width": 800,
+      "height": 700,
+      "total_pixels": 560000,
+      "basic_score": 0.8904202658968043,
+      "file_name": "iloilo_map_reference_3.jpg"
+    },
+    "llm_score": null
+  },
+  {
+    "query": "A clear map showing Iloilo province boundaries with municipalities outlined",
+    "image_info": {
+      "url": "https://cdn.diaocthongthai.com/map/PHL/map_thumbnail_1/phl__iloilo.jpg",
+      "img_format": "JPEG",
+      "mode": "RGB",
+      "file_size": 313625,
+      "width": 1710,
+      "height": 900,
+      "total_pixels": 1539000,
+      "basic_score": 0.8792285397190018,
+      "file_name": "iloilo_map_reference_6.jpg"
+    },
+    "llm_score": null
+  }
+]
