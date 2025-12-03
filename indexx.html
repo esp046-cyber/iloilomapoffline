@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iloilo Province - Interactive GIS Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header Styles */
+        .header {
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            z-index: 1000;
+            position: relative;
+            border-bottom: 1px solid #e8eaed;
+        }
+
+        .header-content {
+            padding: 16px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .title-section {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #202124;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 320px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #5f6368;
+            margin: 0;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+        }
+
+        /* Controls */
+        .controls-section {
+            display: flex;
+            gap: 16px;
+            align-items: stretch;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .search-container {
+            position: relative;
+            min-width: 280px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 40px 12px 48px;
+            border: none;
+            border-radius: 28px;
+            font-size: 15px;
+            background: #f8f9fa;
+            outline: none;
+            transition: all 0.2s;
+            border: 1px solid #e8eaed;
+        }
+        
+        .search-clear {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9aa0a6;
+            font-size: 18px;
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .search-clear.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .search-clear:hover {
+            background: #e8eaed;
+            color: #5f6368;
+        }
+
+        .search-input:focus {
+            background: white;
+            border-color: #1a73e8;
+            box-shadow: 0 2px 8px rgba(26,115,232,0.15);
+        }
+        
+        .search-input:not(:placeholder-shown) {
+            background: white;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            fill: #5f6368;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .filters-container {
+            overflow-x: auto;
+            padding: 2px 0;
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 6px;
+            min-width: max-content;
+            padding-right: 4px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-btn {
+            padding: 8px 12px;
+            border: 1px solid #e8eaed;
+            border-radius: 18px;
+            background: white;
+            color: #5f6368;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            user-select: none;
+            min-width: fit-content;
+            flex-shrink: 0;
+        }
+
+        .filter-btn:hover {
+            background: #f8f9fa;
+            border-color: #dadce0;
+        }
+
+        .filter-btn.active {
+            background: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+            box-shadow: 0 2px 8px rgba(26,115,232,0.3);
+        }
+
+        /* Map Container */
+        .map-container {
+            position: relative;
+            height: calc(100vh - 140px);
+            background: #f1f3f4;
+            overflow: hidden;
+        }
+
+        .map-svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e8f4f8 30%, #d1ecf1 60%, #c3e7f0 100%);
+            pointer-events: auto;
+        }
+
+        .map-svg:active {
+            cursor: grabbing;
+        }
+
+        /* Map Base Layers */
+        .terrain-layer {
+            fill: url(#terrainGradient);
+            opacity: 0.3;
+        }
+
+        .water-layer {
+            fill: #b3d9f2;
+            stroke: #87ceeb;
+            stroke-width: 1;
+            opacity: 0.8;
+        }
+
+        .province-boundary {
+            fill: #f0f8e8;
+            stroke: #4caf50;
+            stroke-width: 2;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+        }
+
+        .district-boundary {
+            fill: none;
+            stroke: #81c784;
+            stroke-width: 1;
+            stroke-dasharray: 4,4;
+            opacity: 0.6;
+        }
+
+        .admin-boundary {
+            fill: rgba(224, 247, 250, 0.2);
+            stroke: #64b5f6;
+            stroke-width: 1;
+            opacity: 0.7;
+            transition: all 0.3s;
+        }
+
+        .admin-boundary:hover {
+            opacity: 1;
+            stroke-width: 2;
+            fill: rgba(224, 247, 250, 0.4);
+        }
+
+        /* Road Network */
+        .major-road {
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 3;
+            opacity: 0.8;
+        }
+
+        .road-outline {
+            fill: none;
+            stroke: #bdbdbd;
+            stroke-width: 1;
+            opacity: 0.6;
+        }
+
+        /* Location Markers */
+        .municipality-marker {
+            fill: #ff5722;
+            stroke: white;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .municipality-marker:hover {
+            fill: #e64a19;
+            stroke-width: 3;
+            transform: scale(1.2);
+        }
+
+        .city-marker {
+            fill: #2196f3;
+            stroke: white;
+            stroke-width: 2.5;
+            cursor: pointer;
+            transition: all 0.3s;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+        }
+
+        .city-marker:hover {
+            fill: #1976d2;
+            stroke-width: 3.5;
+            transform: scale(1.3);
+        }
+
+        .barangay-marker {
+            fill: #9c27b0;
+            stroke: white;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.3s;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
+        }
+
+        .barangay-marker:hover {
+            fill: #7b1fa2;
+            stroke-width: 2.5;
+            transform: scale(1.4);
+        }
+
+        /* Labels */
+        .map-label {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            fill: #37474f;
+            text-anchor: middle;
+            pointer-events: none;
+            user-select: none;
+            paint-order: stroke;
+            stroke: white;
+            stroke-width: 2;
+            stroke-linejoin: round;
+        }
+
+        .city-label {
+            font-size: 13px;
+            font-weight: 600;
+            fill: #1976d2;
+        }
+
+        .district-label {
+            font-size: 10px;
+            font-weight: 600;
+            fill: #4caf50;
+            opacity: 0.8;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            padding: 16px;
+            min-width: 200px;
+            max-width: 25vw;
+            max-height: 160px;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            border: 1px solid #e8eaed;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .info-panel.show {
+            transform: translateX(0);
+        }
+
+        .info-panel h3 {
+            margin: 0 32px 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #202124;
+            line-height: 1.2;
+        }
+
+        .info-panel .info-item {
+            margin: 8px 0;
+            font-size: 13px;
+            color: #5f6368;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            grid-gap: 12px;
+            align-items: baseline;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-panel .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-panel .info-label {
+            font-weight: 500;
+            color: #37474f;
+            text-align: left;
+            min-width: 80px;
+        }
+
+        .info-panel .info-value {
+            color: #202124;
+            text-align: left;
+            font-weight: 400;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #9aa0a6;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-weight: 300;
+        }
+
+        .close-btn:hover {
+            background: #f8f9fa;
+            color: #202124;
+            transform: scale(1.1);
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            padding: 16px;
+            z-index: 1000;
+            border: 1px solid #e8eaed;
+            min-width: 140px;
+            max-width: 180px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .legend h4 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #202124;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            font-size: 13px;
+            color: #5f6368;
+        }
+
+        .legend-marker {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .legend-city { background: #2196f3; }
+        .legend-municipality { background: #ff5722; }
+        .legend-barangay { background: #9c27b0; }
+
+        /* Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 1000;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            width: 48px;
+            height: 48px;
+            background: white;
+            border: 1px solid #e8eaed;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 300;
+            color: #5f6368;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .zoom-btn:hover {
+            background: #f8f9fa;
+            border-color: #dadce0;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            transform: translateY(-1px);
+        }
+
+        /* Loading State */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            text-align: center;
+            font-size: 16px;
+            color: #5f6368;
+            border: 1px solid #e8eaed;
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 12px 16px;
+            }
+            
+            .title-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            
+            .title {
+                font-size: 18px;
+                max-width: 280px;
+            }
+            
+            .subtitle {
+                font-size: 12px;
+                max-width: 200px;
+            }
+            
+            .controls-section {
+                gap: 12px;
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+            }
+            
+            .search-container {
+                min-width: auto;
+                max-width: none;
+                width: 100%;
+            }
+            
+            .filters-container {
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .map-container {
+                height: calc(100vh - 200px);
+            }
+            
+            .info-panel {
+                top: 20px;
+                right: 16px;
+                left: auto;
+                min-width: 200px;
+                max-width: 240px;
+                max-height: 160px;
+                transform: translateX(100%);
+            }
+            
+            .info-panel.show {
+                transform: translateX(0);
+            }
+            
+            .info-panel .info-item {
+                grid-template-columns: 1fr;
+                grid-gap: 4px;
+                padding: 6px 0;
+            }
+            
+            .info-panel .info-label {
+                min-width: auto;
+                font-size: 13px;
+            }
+            
+            .zoom-controls {
+                right: 16px;
+                top: auto;
+                bottom: 80px;
+                transform: none;
+            }
+            
+            .zoom-btn {
+                width: 44px;
+                height: 44px;
+            }
+            
+            .legend {
+                right: 16px;
+                bottom: 16px;
+                padding: 12px;
+                min-width: 140px;
+            }
+            
+            .legend h4 {
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item {
+                font-size: 12px;
+                gap: 8px;
+            }
+        }
+        
+        /* Tablet Responsive */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .title {
+                font-size: 20px;
+                max-width: 280px;
+            }
+            
+            .subtitle {
+                font-size: 12px;
+                max-width: 220px;
+            }
+            
+            .search-container {
+                min-width: 240px;
+                max-width: 320px;
+            }
+            
+            .info-panel {
+                top: 20px;
+                right: 20px;
+                min-width: 220px;
+                max-width: 260px;
+                max-height: 180px;
+            }
+            
+            .filter-btn {
+                font-size: 12px;
+                padding: 7px 10px;
+            }
+        }
+        
+        /* Large Screen Optimization */
+        @media (min-width: 1400px) {
+            .info-panel {
+                right: 40px;
+                top: 20px;
+                min-width: 240px;
+                max-width: 280px;
+            }
+            
+            .legend {
+                right: 40px;
+                bottom: 40px;
+            }
+            
+            .zoom-controls {
+                right: 40px;
+            }
+        }
+
+        /* Improved map styling */
+        .map-grid {
+            stroke: rgba(0,0,0,0.03);
+            stroke-width: 1;
+        }
+
+        .elevation-shade {
+            fill: url(#elevationGradient);
+            opacity: 0.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="title-section">
+                <h1 class="title">Iloilo Province</h1>
+                <p class="subtitle">Interactive GIS Map</p>
+            </div>
+            <div class="controls-section">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search cities, municipalities, or districts..." id="searchInput">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <button class="search-clear" id="searchClear" title="Clear search">&times;</button>
+                </div>
+                <div class="filters-container">
+                    <div class="filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="cities">Cities</button>
+                        <button class="filter-btn" data-filter="municipalities">Municipalities</button>
+                        <button class="filter-btn" data-filter="district1">Dist 1</button>
+                        <button class="filter-btn" data-filter="district2">Dist 2</button>
+                        <button class="filter-btn" data-filter="district3">Dist 3</button>
+                        <button class="filter-btn" data-filter="district4">Dist 4</button>
+                        <button class="filter-btn" data-filter="district5">Dist 5</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <div class="loading" id="loading">
+            <div>Loading interactive map...</div>
+        </div>
+        
+        <svg class="map-svg" id="mapSvg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <linearGradient id="terrainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#e8f5e8;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#f0f8e8;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#f8fce8;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="elevationGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#c8e6c9;stop-opacity:0.6" />
+                    <stop offset="100%" style="stop-color:#a5d6a7;stop-opacity:0.3" />
+                </linearGradient>
+            </defs>
+            <!-- Map content will be generated by JavaScript -->
+        </svg>
+
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
+            <button class="zoom-btn" id="zoomOut" title="Zoom Out">−</button>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <button class="close-btn" id="closePanel" title="Close">&times;</button>
+            <h3 id="infoTitle"></h3>
+            <div class="info-item">
+                <span class="info-label">Type:</span>
+                <span class="info-value" id="infoType"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">District:</span>
+                <span class="info-value" id="infoDistrict"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Population:</span>
+                <span class="info-value" id="infoPopulation"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Area:</span>
+                <span class="info-value" id="infoArea"></span>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-marker legend-city"></div>
+                <span>Cities</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-marker legend-municipality"></div>
+                <span>Municipalities</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-marker legend-barangay"></div>
+                <span>Barangays</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced Iloilo Province Data
+        const iloiloData = {
+            province: {
+                name: "Iloilo Province",
+                population: 2193087,
+                area: "5,044.64 km²",
+                center: [122.5, 10.8]
+            },
+            cities: [
+                { name: "Iloilo City", lat: 10.7204, lng: 122.5621, population: 457626, type: "Highly Urbanized City", district: 1, area: "78.34 km²" },
+                { name: "Passi City", lat: 11.1107, lng: 122.6414, population: 86854, type: "Component City", district: 4, area: "173.15 km²" },
+                { name: "Cabatuan", lat: 10.8833, lng: 122.6167, population: 63266, type: "Component City", district: 1, area: "105.19 km²" },
+                { name: "San Jose", lat: 10.7519, lng: 122.5092, population: 70557, type: "Component City", district: 1, area: "144.10 km²" }
+            ],
+            municipalities: [
+                // District 1 - Around Iloilo City
+                { name: "Alimodian", lat: 10.8544, lng: 122.4586, population: 37920, district: 1, area: "122.07 km²" },
+                { name: "Leon", lat: 10.8333, lng: 122.3667, population: 55505, district: 1, area: "149.50 km²" },
+                { name: "Maasin", lat: 10.8667, lng: 122.4167, population: 35714, district: 1, area: "107.49 km²" },
+                { name: "New Lucena", lat: 10.8167, lng: 122.5333, population: 23547, district: 1, area: "64.61 km²" },
+                { name: "Oton", lat: 10.7167, lng: 122.4833, population: 89364, district: 1, area: "82.60 km²" },
+                { name: "San Miguel", lat: 10.8000, lng: 122.4000, population: 31493, district: 1, area: "114.29 km²" },
+                { name: "Santa Barbara", lat: 10.7833, lng: 122.5333, population: 61241, district: 1, area: "97.72 km²" },
+                { name: "Tigbauan", lat: 10.6667, lng: 122.3833, population: 62257, district: 1, area: "83.45 km²" },
+                
+                // District 2 - Northern Iloilo
+                { name: "Barotac Nuevo", lat: 10.8833, lng: 122.7167, population: 56643, district: 2, area: "94.18 km²" },
+                { name: "Barotac Viejo", lat: 11.1667, lng: 122.8500, population: 45160, district: 2, area: "117.13 km²" },
+                { name: "Banate", lat: 11.0833, lng: 122.7833, population: 33257, district: 2, area: "73.18 km²" },
+                { name: "Estancia", lat: 11.4500, lng: 123.1000, population: 53543, district: 2, area: "84.72 km²" },
+                { name: "Lemery", lat: 11.2167, lng: 122.9167, population: 30584, district: 2, area: "85.44 km²" },
+                { name: "Carles", lat: 11.5833, lng: 123.1667, population: 70641, district: 2, area: "143.62 km²" },
+                { name: "Balasan", lat: 11.2500, lng: 123.0667, population: 33488, district: 2, area: "58.90 km²" },
+                { name: "Batad", lat: 11.3000, lng: 123.0833, population: 21656, district: 2, area: "54.70 km²" },
+                
+                // District 3 - Central Iloilo
+                { name: "Calinog", lat: 10.6000, lng: 122.7167, population: 60646, district: 3, area: "187.24 km²" },
+                { name: "Janiuay", lat: 10.9833, lng: 122.5167, population: 65742, district: 3, area: "143.12 km²" },
+                { name: "Lambunao", lat: 10.9167, lng: 122.5833, population: 75124, district: 3, area: "195.01 km²" },
+                { name: "Mina", lat: 10.9000, lng: 122.5833, population: 25551, district: 3, area: "56.83 km²" },
+                { name: "Pototan", lat: 10.9500, lng: 122.6333, population: 76045, district: 3, area: "101.46 km²" },
+                { name: "Badiangan", lat: 10.9333, lng: 122.4667, population: 27457, district: 3, area: "92.88 km²" },
+                { name: "Zarraga", lat: 10.8000, lng: 122.6000, population: 25136, district: 3, area: "48.61 km²" },
+                
+                // District 4 - Western/Southern Iloilo
+                { name: "Igbaras", lat: 10.7167, lng: 122.2167, population: 33960, district: 4, area: "114.29 km²" },
+                { name: "Guimbal", lat: 10.6667, lng: 122.2667, population: 34919, district: 4, area: "51.14 km²" },
+                { name: "Tigbauan", lat: 10.6667, lng: 122.3833, population: 62257, district: 4, area: "83.45 km²" },
+                { name: "Miagao", lat: 10.6333, lng: 122.2333, population: 68428, district: 4, area: "147.11 km²" },
+                { name: "San Joaquin", lat: 10.5167, lng: 122.1833, population: 51146, district: 4, area: "189.90 km²" },
+                { name: "Tibiao", lat: 10.2667, lng: 121.9833, population: 24402, district: 4, area: "127.67 km²" },
+                { name: "Culasi", lat: 10.4500, lng: 122.0167, population: 41833, district: 4, area: "85.72 km²" },
+                
+                // District 5 - Eastern Iloilo
+                { name: "Dumangas", lat: 10.8333, lng: 122.7167, population: 69729, district: 5, area: "107.23 km²" },
+                { name: "Anilao", lat: 10.7667, lng: 122.6667, population: 29802, district: 5, area: "74.82 km²" },
+                { name: "Dingle", lat: 10.9667, lng: 122.6667, population: 45532, district: 5, area: "81.32 km²" },
+                { name: "Duenas", lat: 10.9667, lng: 122.6333, population: 35466, district: 5, area: "73.89 km²" },
+                { name: "San Enrique", lat: 10.8667, lng: 122.6167, population: 23847, district: 5, area: "50.61 km²" }
+            ],
+            // Add some sample barangays for the legend
+            barangays: [
+                { name: "Bonifacio", lat: 10.7400, lng: 122.5600, parent: "Iloilo City", district: 1 },
+                { name: "Jereos", lat: 10.7300, lng: 122.5700, parent: "Iloilo City", district: 1 },
+                { name: "Luna", lat: 10.7500, lng: 122.5500, parent: "Iloilo City", district: 1 }
+            ]
+        };
+
+        // Map state
+        let currentScale = 1;
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        let currentFilter = 'all';
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let selectedLocation = null;
+
+        // Initialize map
+        function initMap() {
+            hideLoading();
+            renderMap();
+            setupEventListeners();
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function renderMap() {
+            const svg = document.getElementById('mapSvg');
+            
+            // Clear existing content but preserve defs
+            const defs = svg.querySelector('defs');
+            svg.innerHTML = '';
+            if (defs) svg.appendChild(defs);
+
+            // Create terrain background
+            renderTerrain(svg);
+            
+            // Create water bodies
+            renderWaterBodies(svg);
+            
+            // Create province boundary
+            renderProvinceBoundary(svg);
+            
+            // Create road network
+            renderRoadNetwork(svg);
+            
+            // Create district boundaries
+            renderDistrictBoundaries(svg);
+            
+            // Apply current filter and render locations
+            renderLocations();
+        }
+
+        function renderTerrain(svg) {
+            // Create grid pattern for terrain
+            for (let i = 0; i < 1200; i += 60) {
+                const line = createSvgElement('line', {
+                    x1: i, y1: 0, x2: i, y2: 900,
+                    class: 'map-grid'
+                });
+                svg.appendChild(line);
+            }
+            
+            for (let i = 0; i < 900; i += 60) {
+                const line = createSvgElement('line', {
+                    x1: 0, y1: i, x2: 1200, y2: i,
+                    class: 'map-grid'
+                });
+                svg.appendChild(line);
+            }
+        }
+
+        function renderWaterBodies(svg) {
+            // Iloilo Strait (simplified)
+            const straitPath = createSvgElement('path', {
+                d: 'M 200,400 Q 300,380 400,390 Q 500,400 600,410 Q 700,420 800,430',
+                class: 'water-layer'
+            });
+            svg.appendChild(straitPath);
+            
+            // Panay Gulf (simplified)
+            const gulfPath = createSvgElement('path', {
+                d: 'M 600,600 Q 700,620 800,640 Q 900,660 1000,680 Q 1100,700 1200,720 L 1200,900 L 600,900 Z',
+                class: 'water-layer'
+            });
+            svg.appendChild(gulfPath);
+        }
+
+        function renderProvinceBoundary(svg) {
+            // More realistic Iloilo province shape
+            const provincePath = `
+                M 180,280 
+                L 200,250 L 250,220 L 320,200 L 400,190 L 480,185 L 560,190 
+                L 640,195 L 720,200 L 800,210 L 860,230 L 900,260 L 930,300 
+                L 950,350 L 940,400 L 920,450 L 890,500 L 850,550 L 800,590 
+                L 750,620 L 700,640 L 650,655 L 600,660 L 550,655 L 500,645 
+                L 450,630 L 400,610 L 350,585 L 300,555 L 260,520 L 230,480 
+                L 210,440 L 200,400 L 195,360 L 190,320 Z
+            `;
+
+            const province = createSvgElement('path', {
+                d: provincePath,
+                class: 'province-boundary'
+            });
+            svg.appendChild(province);
+        }
+
+        function renderRoadNetwork(svg) {
+            // Major roads
+            const roads = [
+                { x1: 300, y1: 300, x2: 800, y2: 500 }, // Main north-south
+                { x1: 400, y1: 250, x2: 600, y2: 600 }, // Diagonal
+                { x1: 200, y1: 400, x2: 900, y2: 400 }, // East-west
+                { x1: 500, y1: 200, x2: 500, y2: 700 }, // Central vertical
+                { x1: 350, y1: 350, x2: 750, y2: 550 }, // Secondary diagonal
+            ];
+
+            roads.forEach(road => {
+                const outline = createSvgElement('line', {
+                    x1: road.x1, y1: road.y1, x2: road.x2, y2: road.y2,
+                    class: 'road-outline'
+                });
+                svg.appendChild(outline);
+                
+                const main = createSvgElement('line', {
+                    x1: road.x1, y1: road.y1, x2: road.x2, y2: road.y2,
+                    class: 'major-road'
+                });
+                svg.appendChild(main);
+            });
+        }
+
+        function renderDistrictBoundaries(svg) {
+            // District 1 boundary (around Iloilo City)
+            const d1Path = createSvgElement('path', {
+                d: 'M 350,280 L 450,270 L 550,280 L 600,300 L 580,350 L 520,380 L 450,390 L 380,370 L 350,320 Z',
+                class: 'district-boundary'
+            });
+            svg.appendChild(d1Path);
+
+            // District 2 boundary (Northern)
+            const d2Path = createSvgElement('path', {
+                d: 'M 550,180 L 700,170 L 850,180 L 900,220 L 880,280 L 800,320 L 700,340 L 600,330 L 550,280 Z',
+                class: 'district-boundary'
+            });
+            svg.appendChild(d2Path);
+
+            // District 3 boundary (Central)
+            const d3Path = createSvgElement('path', {
+                d: 'M 400,350 L 500,340 L 600,350 L 650,400 L 620,450 L 550,470 L 470,460 L 420,430 L 400,380 Z',
+                class: 'district-boundary'
+            });
+            svg.appendChild(d3Path);
+
+            // District 4 boundary (Western/Southern)
+            const d4Path = createSvgElement('path', {
+                d: 'M 200,380 L 280,370 L 350,390 L 380,440 L 370,500 L 320,540 L 260,530 L 220,480 L 200,420 Z',
+                class: 'district-boundary'
+            });
+            svg.appendChild(d4Path);
+
+            // District 5 boundary (Eastern)
+            const d5Path = createSvgElement('path', {
+                d: 'M 650,400 L 750,390 L 850,410 L 900,470 L 880,530 L 820,560 L 750,550 L 700,510 L 650,450 Z',
+                class: 'district-boundary'
+            });
+            svg.appendChild(d5Path);
+        }
+
+        function renderLocations() {
+            const svg = document.getElementById('mapSvg');
+            const allLocations = [];
+
+            // Add cities
+            iloiloData.cities.forEach(city => {
+                if (shouldShowLocation(city, 'city')) {
+                    allLocations.push({ ...city, type: 'city' });
+                }
+            });
+
+            // Add municipalities
+            iloiloData.municipalities.forEach(municipality => {
+                if (shouldShowLocation(municipality, 'municipality')) {
+                    allLocations.push({ ...municipality, type: 'municipality' });
+                }
+            });
+
+            // Add sample barangays if showing all
+            if (currentFilter === 'all') {
+                iloiloData.barangays.forEach(barangay => {
+                    allLocations.push({ ...barangay, type: 'barangay' });
+                });
+            }
+
+            // Render all locations
+            allLocations.forEach(location => {
+                const coords = latLngToSvg(location.lat, location.lng);
+                renderLocationMarker(location, coords);
+            });
+        }
+
+        function shouldShowLocation(location, locationType) {
+            if (currentFilter === 'all') return true;
+            
+            switch (currentFilter) {
+                case 'cities':
+                    return locationType === 'city';
+                case 'municipalities':
+                    return locationType === 'municipality';
+                case 'district1':
+                    return location.district === 1;
+                case 'district2':
+                    return location.district === 2;
+                case 'district3':
+                    return location.district === 3;
+                case 'district4':
+                    return location.district === 4;
+                case 'district5':
+                    return location.district === 5;
+                default:
+                    return true;
+            }
+        }
+
+        function latLngToSvg(lat, lng) {
+            const svgWidth = 1200;
+            const svgHeight = 900;
+            
+            const x = ((lng - 121.0) / 3.0) * svgWidth + 80;
+            const y = svgHeight - ((lat - 9.5) / 2.0) * svgHeight - 50;
+            
+            return { x: x * currentScale + currentTranslateX, y: y * currentScale + currentTranslateY };
+        }
+
+        function renderLocationMarker(location, coords) {
+            const svg = document.getElementById('mapSvg');
+            
+            let markerClass, markerRadius;
+            switch (location.type) {
+                case 'city':
+                    markerClass = 'city-marker';
+                    markerRadius = 8;
+                    break;
+                case 'municipality':
+                    markerClass = 'municipality-marker';
+                    markerRadius = 6;
+                    break;
+                case 'barangay':
+                    markerClass = 'barangay-marker';
+                    markerRadius = 4;
+                    break;
+                default:
+                    markerClass = 'municipality-marker';
+                    markerRadius = 6;
+            }
+            
+            // Create marker circle
+            const marker = createSvgElement('circle', {
+                cx: coords.x,
+                cy: coords.y,
+                r: markerRadius,
+                class: markerClass
+            });
+            
+            marker.addEventListener('click', () => showInfo(location));
+            svg.appendChild(marker);
+
+            // Add label for important locations
+            if (location.population > 40000 || location.type === 'city') {
+                const label = createSvgElement('text', {
+                    x: coords.x,
+                    y: coords.y - (markerRadius + 12),
+                    class: location.type === 'city' ? 'map-label city-label' : 'map-label'
+                });
+                label.textContent = location.name;
+                svg.appendChild(label);
+            }
+        }
+
+        function createSvgElement(tag, attributes) {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            for (const [key, value] of Object.entries(attributes)) {
+                element.setAttribute(key, value);
+            }
+            return element;
+        }
+
+        function showInfo(location) {
+            selectedLocation = location;
+            const panel = document.getElementById('infoPanel');
+            document.getElementById('infoTitle').textContent = location.name;
+            document.getElementById('infoType').textContent = location.type.charAt(0).toUpperCase() + location.type.slice(1);
+            document.getElementById('infoDistrict').textContent = `District ${location.district}`;
+            document.getElementById('infoPopulation').textContent = location.population ? location.population.toLocaleString() : 'N/A';
+            document.getElementById('infoArea').textContent = location.area || 'N/A';
+            
+            panel.classList.add('show');
+        }
+
+        function setupEventListeners() {
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentFilter = e.target.dataset.filter;
+                    renderMap(); // Re-render entire map
+                });
+            });
+
+            // Search functionality
+            const searchInput = document.getElementById('searchInput');
+            const searchClear = document.getElementById('searchClear');
+            
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                filterLocations(searchTerm);
+                
+                // Show/hide clear button
+                if (searchTerm.length > 0) {
+                    searchClear.classList.add('visible');
+                } else {
+                    searchClear.classList.remove('visible');
+                }
+            });
+            
+            // Clear search
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                filterLocations('');
+                searchClear.classList.remove('visible');
+                searchInput.focus();
+            });
+
+            // Zoom controls
+            document.getElementById('zoomIn').addEventListener('click', () => zoomIn());
+            document.getElementById('zoomOut').addEventListener('click', () => zoomOut());
+
+            // Map panning
+            const svg = document.getElementById('mapSvg');
+            svg.addEventListener('mousedown', startDrag);
+            svg.addEventListener('mousemove', drag);
+            svg.addEventListener('mouseup', endDrag);
+            svg.addEventListener('mouseleave', endDrag);
+
+            // Touch events for mobile
+            svg.addEventListener('touchstart', handleTouchStart, { passive: false });
+            svg.addEventListener('touchmove', handleTouchMove, { passive: false });
+            svg.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // Info panel close
+            document.getElementById('closePanel').addEventListener('click', () => {
+                document.getElementById('infoPanel').classList.remove('show');
+                selectedLocation = null;
+            });
+
+            // Click outside to close panel
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('infoPanel');
+                const isMarker = e.target.closest('.city-marker, .municipality-marker, .barangay-marker');
+                const isPanel = e.target.closest('.info-panel');
+                const isControl = e.target.closest('.filter-btn, .search-input, .zoom-btn');
+                
+                if (!isMarker && !isPanel && !isControl && selectedLocation) {
+                    panel.classList.remove('show');
+                    selectedLocation = null;
+                }
+            });
+        }
+
+        function filterLocations(searchTerm) {
+            const svg = document.getElementById('mapSvg');
+            const markers = svg.querySelectorAll('.city-marker, .municipality-marker, .barangay-marker');
+            const labels = svg.querySelectorAll('.map-label');
+            
+            markers.forEach((marker, index) => {
+                const location = getLocationFromMarker(marker);
+                const matches = !searchTerm || location.name.toLowerCase().includes(searchTerm);
+                
+                marker.style.display = matches ? 'block' : 'none';
+                
+                if (labels[index]) {
+                    labels[index].style.display = matches && (location.population > 40000 || location.type === 'city') ? 'block' : 'none';
+                }
+            });
+        }
+
+        function getLocationFromMarker(marker) {
+            const cx = parseFloat(marker.getAttribute('cx'));
+            const cy = parseFloat(marker.getAttribute('cy'));
+            
+            // Find matching location in data
+            const allLocations = [...iloiloData.cities, ...iloiloData.municipalities, ...iloiloData.barangays];
+            return allLocations.find(loc => {
+                const coords = latLngToSvg(loc.lat, loc.lng);
+                return Math.abs(coords.x - cx) < 5 && Math.abs(coords.y - cy) < 5;
+            }) || { name: 'Unknown', type: 'unknown', population: 0, district: 0, area: '0 km²' };
+        }
+
+        function startDrag(e) {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            
+            currentTranslateX += deltaX;
+            currentTranslateY += deltaY;
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            
+            updateMapTransform();
+        }
+
+        function endDrag() {
+            isDragging = false;
+        }
+
+        function handleTouchStart(e) {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                startDrag({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                drag({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        }
+
+        function handleTouchEnd() {
+            endDrag();
+        }
+
+        function zoomIn() {
+            currentScale *= 1.2;
+            updateMapTransform();
+        }
+
+        function zoomOut() {
+            currentScale /= 1.2;
+            currentScale = Math.max(currentScale, 0.5);
+            updateMapTransform();
+        }
+
+        function updateMapTransform() {
+            const svg = document.getElementById('mapSvg');
+            const allElements = svg.querySelectorAll('*:not(defs)');
+            
+            allElements.forEach(element => {
+                element.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentScale})`;
+                element.style.transformOrigin = '0 0';
+            });
+        }
+
+        // Initialize map when page loads
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>
